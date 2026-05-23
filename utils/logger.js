@@ -2,17 +2,19 @@ const fs = require("fs");
 const path = require("path");
 
 function createLogger(testName) {
-    const fileName = testName.replace(/\s+/g, "_");
-    const logFile = path.join(__dirname, `../logs/${fileName}.log`);
+    const logDir = path.join(__dirname, "..", "logs");
 
-    function log(message) {
-        const time = new Date().toISOString();
-        fs.appendFileSync(logFile, `[${time}] ${message}\n`);
+    if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
     }
 
+    const logFile = path.join(logDir, `${testName}.log`);
+
     return {
-        log,
-        logFile
+        logFile,
+        log: (msg) => {
+            fs.appendFileSync(logFile, msg + "\n");
+        }
     };
 }
 
