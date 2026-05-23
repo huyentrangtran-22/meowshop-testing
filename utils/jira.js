@@ -1,7 +1,5 @@
 const axios = require("axios");
 const fs = require("fs");
-const path = require("path");
-const FormData = require("form-data");
 
 // =====================
 // ENV CONFIG
@@ -19,7 +17,7 @@ if (!JIRA_URL || !EMAIL || !API_TOKEN) {
 const auth = Buffer.from(`${EMAIL}:${API_TOKEN}`).toString("base64");
 
 // =====================
-// CLEAN FUNCTION (QUAN TRỌNG)
+// CLEAN TEXT (JIRA SAFE)
 // =====================
 function cleanText(text) {
     return (text || "")
@@ -27,13 +25,14 @@ function cleanText(text) {
         .replace(/\n/g, " ")
         .replace(/\r/g, " ")
         .replace(/\t/g, " ")
+        .trim()
         .substring(0, 200);
 }
 
 // =====================
 // CREATE BUG FUNCTION
 // =====================
-async function createBug({ title, logFile }) {
+async function createBug({ title, error, logFile }) {
     try {
         // 1. CREATE ISSUE
         const issueRes = await axios.post(
@@ -42,17 +41,17 @@ async function createBug({ title, logFile }) {
                 fields: {
                     project: { key: PROJECT_KEY },
 
-                    // 🔥 FIX: clean summary tránh 400
+                    // ✅ CHỈ TEST CASE NAME
                     summary: cleanText(title),
 
-                    // bạn có thể đổi Task/Bug tùy Jira config
                     issuetype: { name: "Task" }
                 }
             },
             {
                 headers: {
                     Authorization: `Basic ${auth}`,
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
                 }
             }
         );
@@ -62,6 +61,7 @@ async function createBug({ title, logFile }) {
 
         // 2. ATTACH LOG FILE
         if (logFile && fs.existsSync(logFile)) {
+            const FormData = require("form-data");
             const form = new FormData();
 
             form.append("file", fs.createReadStream(logFile));
@@ -79,16 +79,18 @@ async function createBug({ title, logFile }) {
             );
 
             console.log("Attached log file:", logFile);
-        } else {
-            console.warn("⚠ Log file not found:", logFile);
         }
 
         return issueKey;
 
     } catch (err) {
-        // 🔥 FIX: show real Jira error (QUAN TRỌNG DEBUG)
-        console.error("❌ Jira ERROR DETAIL:");
+        // =====================
+        // DEBUG JIRA ERROR PROPERLY
+        // =====================
+        console.error("❌ Jira ERROR:");
         console.error(JSON.stringify(err.response?.data || err.message, null, 2));
+
+        return null;
     }
 }
 
