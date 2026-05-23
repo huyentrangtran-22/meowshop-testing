@@ -5,6 +5,9 @@ let logger;
 let testName;
 
 exports.mochaHooks = {
+    // =====================
+    // BEFORE EACH TEST
+    // =====================
     beforeEach() {
         testName = this.currentTest.title;
 
@@ -13,6 +16,9 @@ exports.mochaHooks = {
         logger.log("Test: " + testName);
     },
 
+    // =====================
+    // AFTER EACH TEST
+    // =====================
     afterEach: async function () {
         const state = this.currentTest.state;
 
@@ -21,18 +27,25 @@ exports.mochaHooks = {
         }
 
         if (state === "failed") {
-            const error = this.currentTest.err?.message || "Unknown error";
+            const error =
+                this.currentTest.err?.message ||
+                "Unknown error";
 
             logger.log("STATUS: FAILED");
             logger.log("ERROR: " + error);
 
             try {
+                // =====================
+                // CREATE JIRA BUG
+                // =====================
                 await createBug({
-                    title: `${testName}`,
+                    title: testName,     // ✅ CHỈ TÊN TEST CASE
                     logFile: logger.logFile
                 });
+
             } catch (err) {
-                console.error("Jira error:", err.message);
+                // ❌ KHÔNG FAIL CI VÌ JIRA
+                console.error("❌ Jira error:", err.message);
             }
         }
 
