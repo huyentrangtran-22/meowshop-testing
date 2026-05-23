@@ -1,6 +1,12 @@
 const createLogger = require("./utils/logger");
 const { createBug } = require("./utils/jira");
+process.on("uncaughtException", (err) => {
+    console.error("❌ Uncaught Exception:", err.message);
+});
 
+process.on("unhandledRejection", (err) => {
+    console.error("❌ Unhandled Rejection:", err);
+});
 let logger;
 let testName;
 
