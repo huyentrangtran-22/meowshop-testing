@@ -5,16 +5,12 @@ on:
     branches:
       - main
 
-  pull_request:
-    branches:
-      - main
-
 jobs:
   selenium-test:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout source code
+      - name: Checkout source
         uses: actions/checkout@v4
 
       - name: Setup NodeJS
@@ -25,5 +21,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run Selenium Testcases
-        run: npm test
+      - name: Run Register Tests
+        run: npm run test-dk
+
+      - name: Run Login Tests
+        run: npm run test-dn
+
+      - name: Run Change Password Tests
+        run: npm run test-dmk
+
+      - name: Run Discount Tests
+        run: npm run test-gg
+
+      - name: Run Billing Information Tests
+        run: npm run test-ttin-ttoan
