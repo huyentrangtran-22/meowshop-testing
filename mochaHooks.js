@@ -1,47 +1,30 @@
-const fs = require('fs')
-const path = require('path')
+const createLogger = require("./utils/logger");
+const jira = require("./utils/jira");
+
+let logger;
+let currentTest;
 
 exports.mochaHooks = {
+    beforeEach() {
+        currentTest = this.currentTest.title;
+        logger = createLogger(currentTest);
+        logger.log("START TEST");
+    },
 
-  async afterEach() {
+    afterEach() {
+        if (this.currentTest.state === "passed") {
+            logger.log("TEST PASSED");
+        } else {
+            logger.log("TEST FAILED");
 
-    const test = this.currentTest
+            const errorMsg = this.currentTest.err?.message || "Unknown error";
 
-    if (test.state === 'failed') {
+            logger.log("ERROR: " + errorMsg);
 
-      // tạo folder logs
-      if (!fs.existsSync('logs')) {
-        fs.mkdirSync('logs')
-      }
-
-      // file txt log
-      fs.writeFileSync(
-        path.join(
-          'logs',
-          `${test.title}.txt`
-        ),
-        test.err.stack
-      )
-
-      // screenshot
-      if (global.driver) {
-
-        const image =
-          await global.driver.takeScreenshot()
-
-        fs.writeFileSync(
-          path.join(
-            'logs',
-            `${test.title}.png`
-          ),
-          image,
-          'base64'
-        )
-
-      }
-
+            jira.createBug({
+                title: `${currentTest} - ${errorMsg}`,
+                logFile: logger.logFile
+            });
+        }
     }
-
-  }
-
-}
+};
