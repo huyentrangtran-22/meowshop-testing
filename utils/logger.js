@@ -2,7 +2,8 @@ const fs = require("fs");
 const path = require("path");
 
 function createLogger(testName) {
-    const logFile = path.join(__dirname, `../logs/${testName}.log`);
+    const fileName = testName.replace(/\s+/g, "_");
+    const logFile = path.join(__dirname, `../logs/${fileName}.log`);
 
     function log(message) {
         const time = new Date().toISOString();
