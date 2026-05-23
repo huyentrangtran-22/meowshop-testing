@@ -16,7 +16,7 @@ describe('QD_DK_01', function() {
   })
   it('QD_DK_01', async function() {
     await driver.get("https://meowshopp.com/")
-    await driver.findElement(By.css(".e-fas-user > path")).click()
+    await driver.findElement(By.css(".e-fas-user")).click()
     await driver.sleep(3000)
     await driver.findElement(By.linkText("Đăng ký")).click()
     await driver.sleep(3000)
