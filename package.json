@@ -2,12 +2,12 @@
   "name": "meowshop-testing",
   "version": "1.0.0",
   "scripts": {
-    "test-dk": "mocha selenium-tests/dang_ky/*.js,
-    "test-dn": "mocha selenium-tests/dang_nhap/*.js,
-    "test-dmk": "mocha selenium-tests/doi_mk/*.js,
-    "test-lh": "mocha selenium-tests/gui_lien_he/*.js,
-    "test-gg": "mocha selenium-tests/giam_gia/*.js,
-    "test-ttin-ttoan": "mocha selenium-tests/them_thong_tin_ttoan/*.js
+    "test-dk": "mocha selenium-tests/dang_ky/*.js",
+    "test-dn": "mocha selenium-tests/dang_nhap/*.js",
+    "test-dmk": "mocha selenium-tests/doi_mk/*.js",
+    "test-lh": "mocha selenium-tests/gui_lien_he/*.js",
+    "test-gg": "mocha selenium-tests/giam_gia/*.js",
+    "test-ttin-ttoan": "mocha selenium-tests/them_thong_tin_ttoan/*.js"
   },
   "dependencies": {
     "chromedriver": "^136.0.0",
