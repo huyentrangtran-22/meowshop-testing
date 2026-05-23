@@ -19,7 +19,7 @@ async function createBug({ title, logFile }) {
                 fields: {
                     project: { key: "MEOW" },
                     summary: title,
-                    issuetype: { name: "Bug" }
+                    issuetype: { name: "Task" }
                 }
             },
             {
