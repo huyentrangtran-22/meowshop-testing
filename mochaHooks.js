@@ -5,9 +5,6 @@ let logger;
 let testName;
 
 exports.mochaHooks = {
-    // =====================
-    // BEFORE EACH TEST
-    // =====================
     beforeEach() {
         testName = this.currentTest.title;
 
@@ -16,39 +13,31 @@ exports.mochaHooks = {
         logger.log("Test: " + testName);
     },
 
-    // =====================
-    // AFTER EACH TEST
-    // =====================
     afterEach: async function () {
         const state = this.currentTest.state;
 
-        if (state === "passed") {
-            logger.log("STATUS: PASSED");
-        }
+        try {
+            if (state === "passed") {
+                logger.log("STATUS: PASSED");
+            }
 
-        if (state === "failed") {
-            const error =
-                this.currentTest.err?.message ||
-                "Unknown error";
+            if (state === "failed") {
+                const error =
+                    this.currentTest.err?.message ||
+                    "Unknown error";
 
-            logger.log("STATUS: FAILED");
-            logger.log("ERROR: " + error);
+                logger.log("STATUS: FAILED");
+                logger.log("ERROR: " + error);
 
-            try {
-                // =====================
-                // CREATE JIRA BUG
-                // =====================
                 await createBug({
-                    title: testName,     // ✅ CHỈ TÊN TEST CASE
+                    title: testName,
                     logFile: logger.logFile
                 });
-
-            } catch (err) {
-                // ❌ KHÔNG FAIL CI VÌ JIRA
-                console.error("❌ Jira error:", err.message);
             }
+        } catch (err) {
+            console.error("❌ Hook error:", err.message);
+        } finally {
+            logger.log("===== END TEST =====\n");
         }
-
-        logger.log("===== END TEST =====\n");
     }
 };
