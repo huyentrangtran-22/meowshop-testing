@@ -1,19 +1,19 @@
-module.exports = function () {
-    const createLogger = require("./utils/logger");
-    const { createBug } = require("./utils/jira");
+const createLogger = require("./utils/logger");
+const { createBug } = require("./utils/jira");
 
-    let logger;
-    let testName;
+let logger;
+let testName;
 
-    beforeEach(function () {
+exports.mochaHooks = {
+    beforeEach() {
         testName = this.currentTest.title;
 
         logger = createLogger(testName);
         logger.log("===== START TEST =====");
         logger.log("Test: " + testName);
-    });
+    },
 
-    afterEach(async function () {
+    afterEach: async function () {
         const state = this.currentTest.state;
 
         if (state === "passed") {
@@ -37,5 +37,5 @@ module.exports = function () {
         }
 
         logger.log("===== END TEST =====\n");
-    });
+    }
 };
