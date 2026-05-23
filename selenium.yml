@@ -1,0 +1,29 @@
+name: Selenium Test
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  selenium-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run Selenium Test
+        run: npm test
+      - name: SonarQube Scan
+        run: sonar-scanner
+      - name: Generate Allure Report
+        run: npm run allure
