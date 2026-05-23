@@ -8,6 +8,7 @@
     "test-lh": "mocha selenium-tests/gui_lien_he/*.js",
     "test-gg": "mocha selenium-tests/giam_gia/*.js",
     "test-ttin-ttoan": "mocha selenium-tests/them_thong_tin_ttoan/*.js"
+    "test-all": "mocha selenium-tests/**/*.js"
   },
   "dependencies": {
     "chromedriver": "^136.0.0",
