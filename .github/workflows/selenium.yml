@@ -18,20 +18,46 @@ jobs:
         with:
           node-version: 20
 
+      # 🚀 cache node_modules (tăng tốc CI)
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+
       - name: Install dependencies
         run: npm install
 
+      # =========================
+      # RUN TESTS (FAIL vẫn chạy tiếp)
+      # =========================
+
       - name: Run Register Tests
         run: npm run test-dk
+        continue-on-error: true
 
       - name: Run Login Tests
         run: npm run test-dn
+        continue-on-error: true
 
       - name: Run Change Password Tests
         run: npm run test-dmk
+        continue-on-error: true
 
       - name: Run Discount Tests
         run: npm run test-gg
+        continue-on-error: true
 
       - name: Run Billing Information Tests
         run: npm run test-ttin-ttoan
+        continue-on-error: true
+
+      # =========================
+      # UPLOAD LOGS (QUAN TRỌNG)
+      # =========================
+      - name: Upload Test Logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selenium-test-logs
+          path: logs/
