@@ -1,25 +1,18 @@
 {
   "name": "meowshop-testing",
   "version": "1.0.0",
-
+  "description": "Selenium + Mocha + Jira CI/CD Testing Framework",
+  "main": "index.js",
   "scripts": {
-
-    "test-all":
-      "mocha selenium-tests/**/*.js --require ./mochaHooks.js"
-
+    "test": "mocha selenium-tests/**/*.js --require dotenv/config --require ./mochaHooks.js",
+    "test-all": "mocha selenium-tests/**/*.js --require dotenv/config --require ./mochaHooks.js"
   },
-
   "dependencies": {
-
     "axios": "^1.6.0",
-
     "chromedriver": "^136.0.0",
-
     "form-data": "^4.0.0",
-
     "mocha": "^10.0.0",
-
-    "selenium-webdriver": "^4.0.0"
-
+    "selenium-webdriver": "^4.0.0",
+    "dotenv": "^16.4.0"
   }
 }
