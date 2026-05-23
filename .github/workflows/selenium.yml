@@ -33,6 +33,10 @@ jobs:
       # =========================
       - name: Run All Tests
         run: npm run test-all
+        env:
+          JIRA_URL: ${{ secrets.JIRA_URL }}
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
         continue-on-error: true
       # =========================
       # UPLOAD LOGS (QUAN TRỌNG)
