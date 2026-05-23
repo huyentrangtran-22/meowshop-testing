@@ -28,7 +28,7 @@ exports.mochaHooks = {
 
             try {
                 await createBug({
-                    title: `${testName} - ${error}`,
+                    title: `${testName}`,
                     logFile: logger.logFile
                 });
             } catch (err) {
