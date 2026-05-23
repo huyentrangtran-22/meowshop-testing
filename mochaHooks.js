@@ -1,30 +1,39 @@
 const createLogger = require("./utils/logger");
-const jira = require("./utils/jira");
+const { createBug } = require("./utils/jira");
 
 let logger;
-let currentTest;
+let testName;
 
 exports.mochaHooks = {
+    
     beforeEach() {
-        currentTest = this.currentTest.title;
-        logger = createLogger(currentTest);
-        logger.log("START TEST");
+        testName = this.currentTest.title;
+
+        logger = createLogger(testName);
+        logger.log("===== START TEST =====");
+        logger.log("Test: " + testName);
     },
 
     afterEach() {
-        if (this.currentTest.state === "passed") {
-            logger.log("TEST PASSED");
-        } else {
-            logger.log("TEST FAILED");
+        const state = this.currentTest.state;
 
-            const errorMsg = this.currentTest.err?.message || "Unknown error";
+        if (state === "passed") {
+            logger.log("STATUS: PASSED");
+        }
 
-            logger.log("ERROR: " + errorMsg);
+        if (state === "failed") {
+            const error = this.currentTest.err?.message || "Unknown error";
 
-            jira.createBug({
-                title: `${currentTest} - ${errorMsg}`,
+            logger.log("STATUS: FAILED");
+            logger.log("ERROR: " + error);
+
+            // 🔥 GỌI JIRA TẠO BUG
+            createBug({
+                title: `${testName} - ${error}`,
                 logFile: logger.logFile
             });
         }
+
+        logger.log("===== END TEST =====\n");
     }
 };
