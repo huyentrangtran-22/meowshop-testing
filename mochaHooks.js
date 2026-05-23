@@ -1,3 +1,17 @@
+const createLogger = require("./utils/logger");
+const { createBug } = require("./utils/jira");
+
+let logger;
+let testName;
+
+beforeEach(function () {
+    testName = this.currentTest.title;
+
+    logger = createLogger(testName);
+    logger.log("===== START TEST =====");
+    logger.log("Test: " + testName);
+});
+
 afterEach(async function () {
     const state = this.currentTest.state;
 
