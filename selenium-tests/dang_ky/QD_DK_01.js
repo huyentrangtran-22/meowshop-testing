@@ -9,7 +9,6 @@ describe('QD_DK_01', function() {
   beforeEach(async function() {
     driver = await new Builder().forBrowser('MicrosoftEdge').build()
     await driver.manage().window().maximize();
-    global.driver = driver
     vars = {}
   })
   afterEach(async function() {
