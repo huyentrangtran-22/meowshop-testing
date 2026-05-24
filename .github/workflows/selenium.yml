@@ -10,43 +10,33 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # =========================
-      # RESTORE JIRA CACHE (QUAN TRỌNG)
-      # =========================
+      # =====================
+      # RESTORE CACHE
+      # =====================
       - name: Restore Jira Cache
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: jiraCache
           path: utils/
-        continue-on-error: true
 
-      # =========================
-      # CACHE NPM
-      # =========================
-      - name: Cache npm
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+      # 🔥 đảm bảo file tồn tại
+      - name: Ensure cache file exists
+        run: |
+          if not exist utils\jiraCache.json echo {} > utils\jiraCache.json
 
-      # =========================
-      # INSTALL DEPENDENCIES
-      # =========================
-      - name: Install dependencies
-        run: npm install
+      - run: npm install
 
-      # =========================
+      # =====================
       # RUN TESTS
-      # =========================
-      - name: Run All Tests
+      # =====================
+      - name: Run tests
         run: npm run test-all
         env:
           JIRA_URL: ${{ secrets.JIRA_URL }}
@@ -54,22 +44,22 @@ jobs:
           JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
         continue-on-error: true
 
-      # =========================
-      # UPLOAD LOGS
-      # =========================
-      - name: Upload Test Logs
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: selenium-test-logs
-          path: logs/**
-
-      # =========================
-      # SAVE JIRA CACHE (QUAN TRỌNG)
-      # =========================
+      # =====================
+      # SAVE CACHE
+      # =====================
       - name: Save Jira Cache
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: jiraCache
           path: utils/jiraCache.json
+
+      # =====================
+      # LOGS
+      # =====================
+      - name: Upload Logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: logs
+          path: logs/**
