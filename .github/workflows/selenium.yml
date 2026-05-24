@@ -16,40 +16,9 @@ jobs:
         with:
           node-version: 20
 
-      # =====================
-      # RESTORE CACHE
-      # =====================
-      - name: Restore Jira Cache
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: jiraCache
-          path: utils/
-
-      - name: Ensure cache file exists
-        shell: pwsh
-        run: |
-          if (-Not (Test-Path "utils/jiraCache.json")) {
-            New-Item -ItemType File -Path "utils/jiraCache.json" -Force
-            Set-Content -Path "utils/jiraCache.json" -Value "{}"
-          }
-
-      # =====================
-      # INSTALL (FIX CHÍNH Ở ĐÂY)
-      # =====================
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      # =====================
-      # FIX PATH NODE BIN (QUAN TRỌNG)
-      # =====================
-      - name: Add node_modules to PATH
-        shell: pwsh
-        run: echo "$env:GITHUB_WORKSPACE/node_modules/.bin" >> $env:GITHUB_PATH
-
-      # =====================
-      # RUN TESTS
-      # =====================
       - name: Run tests
         run: npm run test-all
         env:
@@ -58,20 +27,7 @@ jobs:
           JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
         continue-on-error: true
 
-      # =====================
-      # SAVE CACHE
-      # =====================
-      - name: Save Jira Cache
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: jiraCache
-          path: utils/jiraCache.json
-
-      # =====================
-      # LOGS
-      # =====================
-      - name: Upload Logs
+      - name: Upload logs
         uses: actions/upload-artifact@v4
         if: always()
         with:
