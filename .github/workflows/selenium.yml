@@ -29,10 +29,23 @@ jobs:
       - name: Ensure cache file exists
         shell: pwsh
         run: |
-            if (-Not (Test-Path "utils/jiraCache.json")) {
-              New-Item -ItemType File -Path "utils/jiraCache.json" -Force
-              Set-Content -Path "utils/jiraCache.json" -Value "{}"
-            }
+          if (-Not (Test-Path "utils/jiraCache.json")) {
+            New-Item -ItemType File -Path "utils/jiraCache.json" -Force
+            Set-Content -Path "utils/jiraCache.json" -Value "{}"
+          }
+
+      # =====================
+      # INSTALL (FIX CHÍNH Ở ĐÂY)
+      # =====================
+      - name: Install dependencies
+        run: npm ci
+
+      # =====================
+      # FIX PATH NODE BIN (QUAN TRỌNG)
+      # =====================
+      - name: Add node_modules to PATH
+        shell: pwsh
+        run: echo "$env:GITHUB_WORKSPACE/node_modules/.bin" >> $env:GITHUB_PATH
 
       # =====================
       # RUN TESTS
