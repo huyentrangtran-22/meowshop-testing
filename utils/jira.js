@@ -9,6 +9,9 @@ const EMAIL = process.env.JIRA_EMAIL;
 const API_TOKEN = process.env.JIRA_TOKEN;
 const PROJECT_KEY = "MEOW";
 
+// cache file để map test case → issueKey
+const CACHE_FILE = "./utils/jira-cache.json";
+
 if (!JIRA_URL || !EMAIL || !API_TOKEN) {
     throw new Error("❌ Missing Jira environment variables (GitHub Secrets not set)");
 }
@@ -17,7 +20,22 @@ if (!JIRA_URL || !EMAIL || !API_TOKEN) {
 const auth = Buffer.from(`${EMAIL}:${API_TOKEN}`).toString("base64");
 
 // =====================
-// CLEAN TEXT (JIRA SAFE)
+// LOAD CACHE
+// =====================
+function loadCache() {
+    if (!fs.existsSync(CACHE_FILE)) return {};
+    return JSON.parse(fs.readFileSync(CACHE_FILE, "utf8"));
+}
+
+// =====================
+// SAVE CACHE
+// =====================
+function saveCache(data) {
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(data, null, 2));
+}
+
+// =====================
+// CLEAN TEXT
 // =====================
 function cleanText(text) {
     return (text || "")
@@ -30,23 +48,50 @@ function cleanText(text) {
 }
 
 // =====================
-// CREATE BUG FUNCTION
+// CREATE OR UPDATE BUG
 // =====================
 async function createBug({ title, error, logFile }) {
     try {
+        const cache = loadCache();
+        let issueKey = cache[title];
+
         // =====================
-        // 1. CREATE ISSUE
+        // CREATE NEW ISSUE
         // =====================
-        const issueRes = await axios.post(
-            `${JIRA_URL}/rest/api/3/issue`,
+        if (!issueKey) {
+            const issueRes = await axios.post(
+                `${JIRA_URL}/rest/api/3/issue`,
+                {
+                    fields: {
+                        project: { key: PROJECT_KEY },
+                        summary: cleanText(title),
+
+                        issuetype: { name: "Bug" }
+                    }
+                },
+                {
+                    headers: {
+                        Authorization: `Basic ${auth}`,
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    }
+                }
+            );
+
+            issueKey = issueRes.data.key;
+            cache[title] = issueKey;
+            saveCache(cache);
+
+            console.log("🆕 Created Jira issue:", issueKey);
+        }
+
+        // =====================
+        // UPDATE DESCRIPTION (MỖI LẦN FAIL)
+        // =====================
+        await axios.put(
+            `${JIRA_URL}/rest/api/3/issue/${issueKey}`,
             {
                 fields: {
-                    project: { key: PROJECT_KEY },
-
-                    // ✅ SUMMARY = chỉ tên test case
-                    summary: cleanText(title),
-
-                    // ✅ DESCRIPTION = lỗi chi tiết
                     description: {
                         type: "doc",
                         version: 1,
@@ -61,9 +106,7 @@ async function createBug({ title, error, logFile }) {
                                 ]
                             }
                         ]
-                    },
-
-                    issuetype: { name: "Bug" }
+                    }
                 }
             },
             {
@@ -75,11 +118,10 @@ async function createBug({ title, error, logFile }) {
             }
         );
 
-        const issueKey = issueRes.data.key;
-        console.log("Created Jira issue:", issueKey);
+        console.log("♻ Updated Jira issue:", issueKey);
 
         // =====================
-        // 2. ATTACH LOG FILE
+        // ATTACH LOG FILE
         // =====================
         if (logFile && fs.existsSync(logFile)) {
             const FormData = require("form-data");
@@ -99,7 +141,7 @@ async function createBug({ title, error, logFile }) {
                 }
             );
 
-            console.log("Attached log file:", logFile);
+            console.log("📎 Attached log file:", logFile);
         } else {
             console.warn("⚠ Log file not found:", logFile);
         }
