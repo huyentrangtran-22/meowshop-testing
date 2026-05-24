@@ -12,7 +12,7 @@ const API_TOKEN = process.env.JIRA_TOKEN;
 const PROJECT_KEY = "MEOW";
 
 // cache file
-const CACHE_FILE = path.resolve(__dirname, "jira-cache.json");
+const CACHE_FILE = path.resolve(__dirname, "jiraCache.json");
 
 if (!JIRA_URL || !EMAIL || !API_TOKEN) {
     throw new Error("❌ Missing Jira environment variables (GitHub Secrets not set)");
