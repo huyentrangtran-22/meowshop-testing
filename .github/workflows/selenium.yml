@@ -18,18 +18,33 @@ jobs:
         with:
           node-version: 20
 
-      # 🚀 cache node_modules (tăng tốc CI)
+      # =========================
+      # RESTORE JIRA CACHE (QUAN TRỌNG)
+      # =========================
+      - name: Restore Jira Cache
+        uses: actions/download-artifact@v4
+        with:
+          name: jiraCache
+          path: utils/
+        continue-on-error: true
+
+      # =========================
+      # CACHE NPM
+      # =========================
       - name: Cache npm
         uses: actions/cache@v4
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
 
+      # =========================
+      # INSTALL DEPENDENCIES
+      # =========================
       - name: Install dependencies
         run: npm install
 
       # =========================
-      # RUN TESTS (FAIL vẫn chạy tiếp)
+      # RUN TESTS
       # =========================
       - name: Run All Tests
         run: npm run test-all
@@ -38,8 +53,9 @@ jobs:
           JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
           JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
         continue-on-error: true
+
       # =========================
-      # UPLOAD LOGS (QUAN TRỌNG)
+      # UPLOAD LOGS
       # =========================
       - name: Upload Test Logs
         uses: actions/upload-artifact@v4
@@ -47,3 +63,13 @@ jobs:
         with:
           name: selenium-test-logs
           path: logs/**
+
+      # =========================
+      # SAVE JIRA CACHE (QUAN TRỌNG)
+      # =========================
+      - name: Save Jira Cache
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jiraCache
+          path: utils/jiraCache.json
