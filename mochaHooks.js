@@ -16,16 +16,16 @@ process.on("unhandledRejection", (err) => {
 });
 
 // =====================
-// CLEAN TEST NAME (🔥 FIX QUAN TRỌNG)
+// NORMALIZE TEST NAME (QUAN TRỌNG NHẤT)
 // =====================
-function cleanTestName(title) {
+function normalizeTestName(title) {
     if (!title) return "UNKNOWN";
 
     return title
         .toString()
         .trim()
         .replace(/^\d+\)\s*/, "")   // bỏ "1) "
-        .replace(/\s+/g, "_");      // chuẩn hóa key
+        .replace(/\s+/g, "_");      // chuẩn hóa key Jira cache
 }
 
 // =====================
@@ -33,21 +33,27 @@ function cleanTestName(title) {
 // =====================
 exports.mochaHooks = {
     beforeEach() {
-        testName = cleanTestName(this.currentTest.title);
+        testName = normalizeTestName(this.currentTest.title);
 
         logger = createLogger(testName);
         logger.log("===== START TEST =====");
-        logger.log("Test: " + testName);
+        logger.log("TEST: " + testName);
     },
 
     afterEach: async function () {
         const state = this.currentTest.state;
 
         try {
+            // =====================
+            // PASSED
+            // =====================
             if (state === "passed") {
                 logger.log("STATUS: PASSED");
             }
 
+            // =====================
+            // FAILED → CREATE/UPDATE JIRA
+            // =====================
             if (state === "failed") {
                 const error =
                     this.currentTest.err?.stack ||
@@ -58,16 +64,17 @@ exports.mochaHooks = {
                 logger.log("ERROR: " + error);
 
                 await createBug({
-                    title: testName,   // ✅ luôn là key sạch
+                    title: testName,
                     error: error,
                     logFile: logger?.logFile
                 });
             }
         } catch (err) {
-            console.error("❌ Hook error:", err.message);
+            // ❌ KHÔNG FAIL CI
+            console.error("❌ Hook error (ignored):", err.message);
         } finally {
             try {
-                logger.log("===== END TEST =====\n");
+                logger?.log("===== END TEST =====\n");
             } catch (e) {
                 console.error("Logger error:", e.message);
             }
