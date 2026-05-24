@@ -9,7 +9,9 @@ const PROJECT_KEY = "MEOW";
 
 const auth = Buffer.from(`${EMAIL}:${API_TOKEN}`).toString("base64");
 
+// =====================
 // CLEAN KEY
+// =====================
 function normalizeKey(text) {
     return (text || "")
         .toString()
@@ -18,15 +20,23 @@ function normalizeKey(text) {
         .replace(/\s+/g, "_");
 }
 
-// SEARCH ISSUE IN JIRA (🔥 QUAN TRỌNG)
+// =====================
+// FIXED SEARCH API (Jira Cloud mới)
+// =====================
 async function findIssue(testKey) {
-    const jql = `project=${PROJECT_KEY} AND summary~"${testKey}" ORDER BY created DESC`;
+    const jql = `project = ${PROJECT_KEY} AND summary ~ "${testKey}" ORDER BY created DESC`;
 
-    const res = await axios.get(
-        `${JIRA_URL}/rest/api/3/search?jql=${encodeURIComponent(jql)}`,
+    const res = await axios.post(
+        `${JIRA_URL}/rest/api/3/search/jql`,
+        {
+            jql: jql,
+            maxResults: 1,
+            fields: ["key"]
+        },
         {
             headers: {
                 Authorization: `Basic ${auth}`,
+                "Content-Type": "application/json",
                 Accept: "application/json"
             }
         }
@@ -60,7 +70,8 @@ async function createBug({ title, error, logFile }) {
                 {
                     headers: {
                         Authorization: `Basic ${auth}`,
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
+                        Accept: "application/json"
                     }
                 }
             );
@@ -98,13 +109,14 @@ async function createBug({ title, error, logFile }) {
             {
                 headers: {
                     Authorization: `Basic ${auth}`,
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    Accept: "application/json"
                 }
             }
         );
 
         // =====================
-        // 4. ATTACH LOG
+        // 4. ATTACH LOG FILE
         // =====================
         if (logFile && fs.existsSync(logFile)) {
             const form = new FormData();
