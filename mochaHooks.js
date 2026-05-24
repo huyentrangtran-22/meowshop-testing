@@ -1,5 +1,12 @@
 const createLogger = require("./utils/logger");
 const { createBug } = require("./utils/jira");
+
+let logger;
+let testName;
+
+// =====================
+// GLOBAL ERROR HANDLING
+// =====================
 process.on("uncaughtException", (err) => {
     console.error("❌ Uncaught Exception:", err.message);
 });
@@ -7,9 +14,10 @@ process.on("uncaughtException", (err) => {
 process.on("unhandledRejection", (err) => {
     console.error("❌ Unhandled Rejection:", err);
 });
-let logger;
-let testName;
 
+// =====================
+// MOCHA HOOKS
+// =====================
 exports.mochaHooks = {
     beforeEach() {
         testName = this.currentTest.title;
@@ -29,21 +37,32 @@ exports.mochaHooks = {
 
             if (state === "failed") {
                 const error =
+                    this.currentTest.err?.stack ||
                     this.currentTest.err?.message ||
                     "Unknown error";
 
                 logger.log("STATUS: FAILED");
                 logger.log("ERROR: " + error);
 
+                // =====================
+                // SAFE JIRA CALL
+                // =====================
                 await createBug({
                     title: testName,
-                    logFile: logger.logFile
+                    error: error,
+                    logFile: logger?.logFile
                 });
             }
         } catch (err) {
+            // ❌ KHÔNG làm fail test run
             console.error("❌ Hook error:", err.message);
         } finally {
-            logger.log("===== END TEST =====\n");
+            // ALWAYS RUN
+            try {
+                logger.log("===== END TEST =====\n");
+            } catch (e) {
+                console.error("Logger error:", e.message);
+            }
         }
     }
 };
