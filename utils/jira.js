@@ -11,11 +11,10 @@ const EMAIL = process.env.JIRA_EMAIL;
 const API_TOKEN = process.env.JIRA_TOKEN;
 const PROJECT_KEY = "MEOW";
 
-// cache file
 const CACHE_FILE = path.resolve(__dirname, "jiraCache.json");
 
 if (!JIRA_URL || !EMAIL || !API_TOKEN) {
-    throw new Error("❌ Missing Jira environment variables (GitHub Secrets not set)");
+    throw new Error("❌ Missing Jira environment variables");
 }
 
 // =====================
@@ -24,14 +23,24 @@ if (!JIRA_URL || !EMAIL || !API_TOKEN) {
 const auth = Buffer.from(`${EMAIL}:${API_TOKEN}`).toString("base64");
 
 // =====================
+// NORMALIZE KEY (🔥 FIX QUAN TRỌNG)
+// =====================
+function normalizeKey(text) {
+    return (text || "")
+        .toString()
+        .trim()
+        .replace(/\s+/g, " ")   // bỏ nhiều space
+        .replace(/^\d+\)\s*/, "") // bỏ "1) "
+}
+
+// =====================
 // LOAD CACHE
 // =====================
 function loadCache() {
     try {
         if (!fs.existsSync(CACHE_FILE)) return {};
         return JSON.parse(fs.readFileSync(CACHE_FILE, "utf8"));
-    } catch (e) {
-        console.warn("⚠ Cache load error, reset cache");
+    } catch {
         return {};
     }
 }
@@ -57,16 +66,17 @@ function cleanText(text) {
 }
 
 // =====================
-// CREATE OR UPDATE ISSUE
+// CREATE OR UPDATE BUG
 // =====================
 async function createBug({ title, error, logFile }) {
     try {
         const cache = loadCache();
 
-        let issueKey = cache[title];
+        const key = normalizeKey(title); // 🔥 FIX
+        let issueKey = cache[key];
 
         // =====================
-        // CREATE NEW ISSUE IF NOT EXISTS
+        // CREATE ISSUE
         // =====================
         if (!issueKey) {
             const res = await axios.post(
@@ -74,7 +84,7 @@ async function createBug({ title, error, logFile }) {
                 {
                     fields: {
                         project: { key: PROJECT_KEY },
-                        summary: cleanText(title),
+                        summary: key,
                         issuetype: { name: "Bug" }
                     }
                 },
@@ -82,20 +92,20 @@ async function createBug({ title, error, logFile }) {
                     headers: {
                         Authorization: `Basic ${auth}`,
                         "Content-Type": "application/json",
-                        "Accept": "application/json"
+                        Accept: "application/json"
                     }
                 }
             );
 
             issueKey = res.data.key;
-            cache[title] = issueKey;
+            cache[key] = issueKey;
             saveCache(cache);
 
             console.log("🆕 Created Jira issue:", issueKey);
         }
 
         // =====================
-        // UPDATE DESCRIPTION (ALWAYS)
+        // UPDATE DESCRIPTION
         // =====================
         await axios.put(
             `${JIRA_URL}/rest/api/3/issue/${issueKey}`,
@@ -110,7 +120,7 @@ async function createBug({ title, error, logFile }) {
                                 content: [
                                     {
                                         type: "text",
-                                        text: cleanText(error || "No error message")
+                                        text: cleanText(error || "No error")
                                     }
                                 ]
                             }
@@ -122,7 +132,7 @@ async function createBug({ title, error, logFile }) {
                 headers: {
                     Authorization: `Basic ${auth}`,
                     "Content-Type": "application/json",
-                    "Accept": "application/json"
+                    Accept: "application/json"
                 }
             }
         );
@@ -130,7 +140,7 @@ async function createBug({ title, error, logFile }) {
         console.log("♻ Updated Jira issue:", issueKey);
 
         // =====================
-        // ATTACH LOG FILE
+        // ATTACH LOG
         // =====================
         if (logFile && fs.existsSync(logFile)) {
             const form = new FormData();
@@ -148,13 +158,13 @@ async function createBug({ title, error, logFile }) {
                 }
             );
 
-            console.log("📎 Attached log file:", logFile);
+            console.log("📎 Attached log:", logFile);
         }
 
         return issueKey;
 
     } catch (err) {
-        console.error("❌ Jira ERROR DETAIL:");
+        console.error("❌ Jira ERROR:");
         console.error(JSON.stringify(err.response?.data || err.message, null, 2));
         return null;
     }
