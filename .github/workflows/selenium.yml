@@ -26,13 +26,13 @@ jobs:
           name: jiraCache
           path: utils/
 
-      # 🔥 đảm bảo file tồn tại
       - name: Ensure cache file exists
+        shell: pwsh
         run: |
-          if not exist utils\jiraCache.json echo {} > utils\jiraCache.json
-
-      - run: npm install
-        continue-on-error: true
+            if (-Not (Test-Path "utils/jiraCache.json")) {
+              New-Item -ItemType File -Path "utils/jiraCache.json" -Force
+              Set-Content -Path "utils/jiraCache.json" -Value "{}"
+            }
 
       # =====================
       # RUN TESTS
