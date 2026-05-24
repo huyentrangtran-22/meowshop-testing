@@ -1,5 +1,7 @@
 const axios = require("axios");
 const fs = require("fs");
+const FormData = require("form-data");
+const path = require("path");
 
 // =====================
 // ENV CONFIG
@@ -9,29 +11,36 @@ const EMAIL = process.env.JIRA_EMAIL;
 const API_TOKEN = process.env.JIRA_TOKEN;
 const PROJECT_KEY = "MEOW";
 
-// cache file để map test case → issueKey
-const CACHE_FILE = "./utils/jira-cache.json";
+// cache file
+const CACHE_FILE = path.resolve(__dirname, "jira-cache.json");
 
 if (!JIRA_URL || !EMAIL || !API_TOKEN) {
     throw new Error("❌ Missing Jira environment variables (GitHub Secrets not set)");
 }
 
-// Basic Auth
+// =====================
+// AUTH
+// =====================
 const auth = Buffer.from(`${EMAIL}:${API_TOKEN}`).toString("base64");
 
 // =====================
 // LOAD CACHE
 // =====================
 function loadCache() {
-    if (!fs.existsSync(CACHE_FILE)) return {};
-    return JSON.parse(fs.readFileSync(CACHE_FILE, "utf8"));
+    try {
+        if (!fs.existsSync(CACHE_FILE)) return {};
+        return JSON.parse(fs.readFileSync(CACHE_FILE, "utf8"));
+    } catch (e) {
+        console.warn("⚠ Cache load error, reset cache");
+        return {};
+    }
 }
 
 // =====================
 // SAVE CACHE
 // =====================
-function saveCache(data) {
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(data, null, 2));
+function saveCache(cache) {
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2));
 }
 
 // =====================
@@ -48,24 +57,24 @@ function cleanText(text) {
 }
 
 // =====================
-// CREATE OR UPDATE BUG
+// CREATE OR UPDATE ISSUE
 // =====================
 async function createBug({ title, error, logFile }) {
     try {
         const cache = loadCache();
+
         let issueKey = cache[title];
 
         // =====================
-        // CREATE NEW ISSUE
+        // CREATE NEW ISSUE IF NOT EXISTS
         // =====================
         if (!issueKey) {
-            const issueRes = await axios.post(
+            const res = await axios.post(
                 `${JIRA_URL}/rest/api/3/issue`,
                 {
                     fields: {
                         project: { key: PROJECT_KEY },
                         summary: cleanText(title),
-
                         issuetype: { name: "Bug" }
                     }
                 },
@@ -78,7 +87,7 @@ async function createBug({ title, error, logFile }) {
                 }
             );
 
-            issueKey = issueRes.data.key;
+            issueKey = res.data.key;
             cache[title] = issueKey;
             saveCache(cache);
 
@@ -86,7 +95,7 @@ async function createBug({ title, error, logFile }) {
         }
 
         // =====================
-        // UPDATE DESCRIPTION (MỖI LẦN FAIL)
+        // UPDATE DESCRIPTION (ALWAYS)
         // =====================
         await axios.put(
             `${JIRA_URL}/rest/api/3/issue/${issueKey}`,
@@ -124,9 +133,7 @@ async function createBug({ title, error, logFile }) {
         // ATTACH LOG FILE
         // =====================
         if (logFile && fs.existsSync(logFile)) {
-            const FormData = require("form-data");
             const form = new FormData();
-
             form.append("file", fs.createReadStream(logFile));
 
             await axios.post(
@@ -142,8 +149,6 @@ async function createBug({ title, error, logFile }) {
             );
 
             console.log("📎 Attached log file:", logFile);
-        } else {
-            console.warn("⚠ Log file not found:", logFile);
         }
 
         return issueKey;
