@@ -26,7 +26,7 @@ function cleanText(text) {
         .replace(/\r/g, " ")
         .replace(/\t/g, " ")
         .trim()
-        .substring(0, 200);
+        .substring(0, 300);
 }
 
 // =====================
@@ -34,17 +34,36 @@ function cleanText(text) {
 // =====================
 async function createBug({ title, error, logFile }) {
     try {
+        // =====================
         // 1. CREATE ISSUE
+        // =====================
         const issueRes = await axios.post(
             `${JIRA_URL}/rest/api/3/issue`,
             {
                 fields: {
                     project: { key: PROJECT_KEY },
 
-                    // ✅ CHỈ TEST CASE NAME
+                    // ✅ SUMMARY = chỉ tên test case
                     summary: cleanText(title),
 
-                    issuetype: { name: "Task" }
+                    // ✅ DESCRIPTION = lỗi chi tiết
+                    description: {
+                        type: "doc",
+                        version: 1,
+                        content: [
+                            {
+                                type: "paragraph",
+                                content: [
+                                    {
+                                        type: "text",
+                                        text: cleanText(error || "No error message")
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+
+                    issuetype: { name: "Bug" }
                 }
             },
             {
@@ -59,7 +78,9 @@ async function createBug({ title, error, logFile }) {
         const issueKey = issueRes.data.key;
         console.log("Created Jira issue:", issueKey);
 
+        // =====================
         // 2. ATTACH LOG FILE
+        // =====================
         if (logFile && fs.existsSync(logFile)) {
             const FormData = require("form-data");
             const form = new FormData();
@@ -79,17 +100,15 @@ async function createBug({ title, error, logFile }) {
             );
 
             console.log("Attached log file:", logFile);
+        } else {
+            console.warn("⚠ Log file not found:", logFile);
         }
 
         return issueKey;
 
     } catch (err) {
-        // =====================
-        // DEBUG JIRA ERROR PROPERLY
-        // =====================
-        console.error("❌ Jira ERROR:");
+        console.error("❌ Jira ERROR DETAIL:");
         console.error(JSON.stringify(err.response?.data || err.message, null, 2));
-
         return null;
     }
 }
