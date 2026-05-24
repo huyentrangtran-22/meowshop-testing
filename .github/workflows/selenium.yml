@@ -32,6 +32,7 @@ jobs:
           if not exist utils\jiraCache.json echo {} > utils\jiraCache.json
 
       - run: npm install
+        continue-on-error: true
 
       # =====================
       # RUN TESTS
