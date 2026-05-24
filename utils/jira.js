@@ -1,5 +1,6 @@
 const axios = require("axios");
 const fs = require("fs");
+const path = require("path");
 const FormData = require("form-data");
 
 // =====================
@@ -8,71 +9,89 @@ const EMAIL = process.env.JIRA_EMAIL;
 const API_TOKEN = process.env.JIRA_TOKEN;
 const PROJECT_KEY = "MEOW";
 
+// 🔥 FIX PATH CHUẨN CI/CD
+const CACHE_FILE = path.resolve(process.cwd(), "utils", "jiraCache.json");
+
 if (!JIRA_URL || !EMAIL || !API_TOKEN) {
-    throw new Error("Missing Jira env");
+    throw new Error("Missing Jira env variables");
 }
 
+// =====================
 const auth = Buffer.from(`${EMAIL}:${API_TOKEN}`).toString("base64");
 
 // =====================
-// CLEAN TEST NAME
+// ENSURE FILE EXISTS
 // =====================
-function getTestKey(title) {
-    return (title || "")
-        .toString()
-        .replace(/^\d+\)\s*/, "")
-        .trim();
-}
+function ensureCacheFile() {
+    const dir = path.dirname(CACHE_FILE);
 
-// =====================
-// FIND ISSUE IN JIRA (🔥 KEY FIX)
-// =====================
-async function findIssue(testKey) {
-    try {
-        const res = await axios.get(
-            `${JIRA_URL}/rest/api/3/search`,
-            {
-                headers: {
-                    Authorization: `Basic ${auth}`,
-                    Accept: "application/json"
-                },
-                params: {
-                    jql: `project=${PROJECT_KEY} AND summary ~ "${testKey}"`
-                }
-            }
-        );
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+    }
 
-        return res.data.issues?.[0]?.key || null;
-    } catch (err) {
-        console.error("Search error:", err.message);
-        return null;
+    if (!fs.existsSync(CACHE_FILE)) {
+        fs.writeFileSync(CACHE_FILE, "{}");
     }
 }
 
 // =====================
-async function createIssue(testKey) {
-    const res = await axios.post(
-        `${JIRA_URL}/rest/api/3/issue`,
-        {
-            fields: {
-                project: { key: PROJECT_KEY },
-                summary: testKey,
-                issuetype: { name: "Bug" }
-            }
-        },
-        {
-            headers: {
-                Authorization: `Basic ${auth}`,
-                "Content-Type": "application/json"
-            }
-        }
-    );
+function loadCache() {
+    ensureCacheFile();
+    return JSON.parse(fs.readFileSync(CACHE_FILE, "utf8"));
+}
 
-    return res.data.key;
+function saveCache(cache) {
+    ensureCacheFile();
+    fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2));
 }
 
 // =====================
-async function updateIssue(issueKey, error) {
+function normalizeKey(title) {
+    return (title || "")
+        .toString()
+        .trim()
+        .replace(/^\d+\)\s*/, "")
+        .replace(/\s+/g, "_");
+}
+
+// =====================
+async function createBug({ title, error, logFile }) {
+    const cache = loadCache();
+
+    const key = normalizeKey(title);
+    let issueKey = cache[key];
+
+    // =====================
+    // CREATE ONLY ONCE
+    // =====================
+    if (!issueKey) {
+        const res = await axios.post(
+            `${JIRA_URL}/rest/api/3/issue`,
+            {
+                fields: {
+                    project: { key: PROJECT_KEY },
+                    summary: key,
+                    issuetype: { name: "Bug" }
+                }
+            },
+            {
+                headers: {
+                    Authorization: `Basic ${auth}`,
+                    "Content-Type": "application/json"
+                }
+            }
+        );
+
+        issueKey = res.data.key;
+        cache[key] = issueKey;
+        saveCache(cache);
+
+        console.log("🆕 Created Jira:", issueKey);
+    }
+
+    // =====================
+    // ALWAYS UPDATE DESCRIPTION
+    // =====================
     await axios.put(
         `${JIRA_URL}/rest/api/3/issue/${issueKey}`,
         {
@@ -101,55 +120,30 @@ async function updateIssue(issueKey, error) {
             }
         }
     );
-}
 
-// =====================
-async function attachLog(issueKey, logFile) {
-    if (!logFile || !fs.existsSync(logFile)) return;
+    // =====================
+    // ATTACH LOG
+    // =====================
+    if (logFile && fs.existsSync(logFile)) {
+        const form = new FormData();
+        form.append("file", fs.createReadStream(logFile));
 
-    const form = new FormData();
-    form.append("file", fs.createReadStream(logFile));
-
-    await axios.post(
-        `${JIRA_URL}/rest/api/3/issue/${issueKey}/attachments`,
-        form,
-        {
-            headers: {
-                Authorization: `Basic ${auth}`,
-                "X-Atlassian-Token": "no-check",
-                ...form.getHeaders()
+        await axios.post(
+            `${JIRA_URL}/rest/api/3/issue/${issueKey}/attachments`,
+            form,
+            {
+                headers: {
+                    Authorization: `Basic ${auth}`,
+                    "X-Atlassian-Token": "no-check",
+                    ...form.getHeaders()
+                }
             }
-        }
-    );
-}
-
-// =====================
-// MAIN
-// =====================
-async function createBug({ title, error, logFile }) {
-    try {
-        const testKey = getTestKey(title);
-
-        // 🔥 SEARCH FIRST
-        let issueKey = await findIssue(testKey);
-
-        if (!issueKey) {
-            issueKey = await createIssue(testKey);
-            console.log("🆕 Created:", issueKey);
-        } else {
-            console.log("♻ Reuse:", issueKey);
-        }
-
-        await updateIssue(issueKey, error);
-        await attachLog(issueKey, logFile);
-
-        console.log("✅ Done:", issueKey);
-
-        return issueKey;
-
-    } catch (err) {
-        console.error("❌ Jira ERROR:", err.response?.data || err.message);
+        );
     }
+
+    console.log("♻ Updated Jira:", issueKey);
+
+    return issueKey;
 }
 
 module.exports = { createBug };
