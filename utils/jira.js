@@ -4,7 +4,7 @@ const FormData = require("form-data");
 const path = require("path");
 
 // =====================
-// ENV CONFIG
+// ENV
 // =====================
 const JIRA_URL = process.env.JIRA_URL;
 const EMAIL = process.env.JIRA_EMAIL;
@@ -23,14 +23,16 @@ if (!JIRA_URL || !EMAIL || !API_TOKEN) {
 const auth = Buffer.from(`${EMAIL}:${API_TOKEN}`).toString("base64");
 
 // =====================
-// NORMALIZE KEY (🔥 FIX QUAN TRỌNG)
+// NORMALIZE TEST NAME (FIX QUAN TRỌNG)
 // =====================
-function normalizeKey(text) {
-    return (text || "")
+function getTestKey(title) {
+    if (!title) return "UNKNOWN";
+
+    return title
         .toString()
         .trim()
-        .replace(/\s+/g, " ")   // bỏ nhiều space
-        .replace(/^\d+\)\s*/, "") // bỏ "1) "
+        .replace(/^\d+\)\s*/, "")   // bỏ "1) "
+        .replace(/\s+/g, "_");      // chuẩn hóa thành key ổn định
 }
 
 // =====================
@@ -66,17 +68,17 @@ function cleanText(text) {
 }
 
 // =====================
-// CREATE OR UPDATE BUG
+// CREATE OR UPDATE ISSUE
 // =====================
 async function createBug({ title, error, logFile }) {
     try {
         const cache = loadCache();
 
-        const key = normalizeKey(title); // 🔥 FIX
-        let issueKey = cache[key];
+        const testKey = getTestKey(title);
+        let issueKey = cache[testKey];
 
         // =====================
-        // CREATE ISSUE
+        // CREATE ISSUE IF NOT EXISTS
         // =====================
         if (!issueKey) {
             const res = await axios.post(
@@ -84,7 +86,7 @@ async function createBug({ title, error, logFile }) {
                 {
                     fields: {
                         project: { key: PROJECT_KEY },
-                        summary: key,
+                        summary: testKey,
                         issuetype: { name: "Bug" }
                     }
                 },
@@ -98,14 +100,14 @@ async function createBug({ title, error, logFile }) {
             );
 
             issueKey = res.data.key;
-            cache[key] = issueKey;
+            cache[testKey] = issueKey;
             saveCache(cache);
 
             console.log("🆕 Created Jira issue:", issueKey);
         }
 
         // =====================
-        // UPDATE DESCRIPTION
+        // UPDATE DESCRIPTION (LUÔN LUÔN UPDATE)
         // =====================
         await axios.put(
             `${JIRA_URL}/rest/api/3/issue/${issueKey}`,
@@ -120,7 +122,7 @@ async function createBug({ title, error, logFile }) {
                                 content: [
                                     {
                                         type: "text",
-                                        text: cleanText(error || "No error")
+                                        text: cleanText(error || "No error message")
                                     }
                                 ]
                             }
@@ -140,7 +142,7 @@ async function createBug({ title, error, logFile }) {
         console.log("♻ Updated Jira issue:", issueKey);
 
         // =====================
-        // ATTACH LOG
+        // ATTACH LOG FILE
         // =====================
         if (logFile && fs.existsSync(logFile)) {
             const form = new FormData();
