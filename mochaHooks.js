@@ -16,11 +16,24 @@ process.on("unhandledRejection", (err) => {
 });
 
 // =====================
+// CLEAN TEST NAME (🔥 FIX QUAN TRỌNG)
+// =====================
+function cleanTestName(title) {
+    if (!title) return "UNKNOWN";
+
+    return title
+        .toString()
+        .trim()
+        .replace(/^\d+\)\s*/, "")   // bỏ "1) "
+        .replace(/\s+/g, "_");      // chuẩn hóa key
+}
+
+// =====================
 // MOCHA HOOKS
 // =====================
 exports.mochaHooks = {
     beforeEach() {
-        testName = this.currentTest.title;
+        testName = cleanTestName(this.currentTest.title);
 
         logger = createLogger(testName);
         logger.log("===== START TEST =====");
@@ -44,20 +57,15 @@ exports.mochaHooks = {
                 logger.log("STATUS: FAILED");
                 logger.log("ERROR: " + error);
 
-                // =====================
-                // SAFE JIRA CALL
-                // =====================
                 await createBug({
-                    title: testName,
+                    title: testName,   // ✅ luôn là key sạch
                     error: error,
                     logFile: logger?.logFile
                 });
             }
         } catch (err) {
-            // ❌ KHÔNG làm fail test run
             console.error("❌ Hook error:", err.message);
         } finally {
-            // ALWAYS RUN
             try {
                 logger.log("===== END TEST =====\n");
             } catch (e) {
